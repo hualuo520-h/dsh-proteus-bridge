@@ -1,0 +1,4 @@
+# Register the Proteus bridge tool plugin into the profile composition.
+- insert:
+    - id: dsh-proteus-bridge
+      name: dsh-proteus-bridge
