@@ -73,6 +73,15 @@ export declare class ProteusSession {
         confirmRollback?: boolean;
     }, signal: AbortSignal): Promise<DomainResult<{
         saved: string;
+        /** UI 传输：被点掉的模态框按钮文本（无对话框则 null）。 */
+        dismissedDialog?: string | null;
+        /** UI 传输：磁盘内容是否真的变了（sha256+size）。 */
+        contentChanged?: boolean;
+        /** UI 传输：保存前后的字节数。 */
+        bytes?: {
+            before: number;
+            after: number;
+        };
     }>>;
     simStart(signal: AbortSignal): Promise<DomainResult<{
         state: SimState;

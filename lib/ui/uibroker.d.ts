@@ -11,7 +11,11 @@
  *   - 状态读取 = Alt+D 打开调试菜单刷新启用矩阵后 GetMenuState：
  *       582(停止) 禁用 → idle；581(暂停) 禁用 → paused；否则 running
  *     实测值：paused: 581=0x103；idle: 581/582 双 0x103；running: 576=0x103。
- *   - 前台投递必须 AttachThreadInput 绕前台锁；keybd_event 全 VK 级。
+ *   - 前台投递必须先用一次裸 ALT 解掉 Windows 前台锁，再 AttachThreadInput；keybd_event 全 VK 级。
+ *     （只做 AttachThreadInput+SetForegroundWindow 时 SetForegroundWindow 返回 true 但前台不变，
+ *      实测会持续 FOREGROUND_FAILED。）
+ *   - Ctrl+S 在 8.17 会弹「File will be saved in version 8.17 format…」确认框：必须点掉，
+ *     否则它占住前台且文件不落盘。见 saveWithDialog。
  *   - 绝不向工具栏发 TB_* 消息（越界索引会把 32 位 comctl32 写崩，实测事故）。
  *   - 同步 SendMessage 会死锁（实测），一律 PostMessage / 只读 API。
  */
@@ -38,6 +42,15 @@ export declare class UiBroker extends LineBroker {
      */
     menuStop(signal: AbortSignal): Promise<unknown>;
     keyCtrlS(signal: AbortSignal): Promise<unknown>;
+    /**
+     * Ctrl+S + 点掉「File will be saved in version X format…」确认框。
+     * 返回被点按钮的文本（无对话框则 null）与轮询耗时。
+     * 不点掉该框时它占住前台：后续注键全部 FOREGROUND_FAILED，且文件根本不落盘。
+     */
+    saveWithDialog(signal: AbortSignal): Promise<{
+        dismissed: string | null;
+        waited: number;
+    }>;
     /** 原子点击 Animation 工具栏第 index 颗按钮（0 起）。 */
     clickTransportButton(index: number, signal: AbortSignal): Promise<unknown>;
     batchOps(calls: {

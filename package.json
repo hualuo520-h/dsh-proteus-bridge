@@ -1,12 +1,22 @@
 {
   "name": "dsh-proteus-bridge",
   "displayName": "DSH Proteus Bridge",
-  "description": "让 Harness Agent 通过 COM 控制 Proteus 8/9 交互仿真并编辑原理图：仿真生命周期、信号读取、元件放置、引脚查询、导线连接与工程保存。",
-  "version": "0.4.0",
+  "description": "让 Harness Agent 控制 Proteus 8/9 交互仿真并保存工程：仿真生命周期、状态探测、工程保存、布局建议。无 COM 时自动降级到 UI 传输（Win32 键盘驱动）。",
+  "version": "0.4.1",
   "license": "MIT",
+  "author": "hualuo520-h",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hualuo520-h/dsh-proteus-bridge.git"
+  },
+  "homepage": "https://github.com/hualuo520-h/dsh-proteus-bridge#readme",
+  "bugs": {
+    "url": "https://github.com/hualuo520-h/dsh-proteus-bridge/issues"
+  },
   "keywords": [
     "dsh-plugin",
     "deepseek-harness",
+    "cordis",
     "proteus",
     "eda",
     "simulation",
@@ -29,7 +39,9 @@
     "lib",
     "whitelist",
     "cordis.patch.yml",
-    "README.md"
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE"
   ],
   "dsh": {
     "bundle": {
@@ -57,7 +69,7 @@
     "typescript": "^5.6.0"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "check": "node --check lib/index.js && node --check lib/session.js && node --check lib/ui/uibroker.js && node --check lib/layout.js && node --check lib/errors.js",
+    "test": "node test/selfcheck.mjs"
   }
 }
