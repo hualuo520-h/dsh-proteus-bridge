@@ -49,11 +49,19 @@ dsh plugin add dsh-proteus-bridge
 `lib/ui/uibroker.js` 内嵌一段 PowerShell 5.1 + C# 脚本，作为**持久子进程**运行（不是每次调用起一个）。它只提供原子原语，组合逻辑在 `lib/session.js`：
 
 - **附着**：按窗口标题子串 `Proteus 8 Professional` 找主窗口；找不到就 `spawn` `PDS.EXE` + 工程路径，6 次 × 5 s 轮询。
-- **前台投递**：先发一次裸 `ALT`（`keybd_event` 0x12 down/up）解掉 Windows 前台锁，再 `AttachThreadInput` + `SetForegroundWindow`。只做后者时 `SetForegroundWindow` 会返回 `true` 而前台窗口不变，随后持续 `FOREGROUND_FAILED`。
+- **前台投递**：先发一次裸 `ALT`（`keybd_event` 0x12 down/up）解掉 Windows 前台锁，再 `AttachThreadInput` + `SetForegroundWindow`。只做后者时 `SetForegroundWindow` 会返回 `true` 而前台窗口不变，随后持续 `FOREGROUND_FAILED`。窗口最小化时先 `SW_RESTORE`（最小化矩形是 `-32000` 级哨兵值，在上面算点击坐标会把鼠标扔到屏幕外）；仍抢不到则兜底 `SwitchToThisWindow`。
 - **状态探测**：`WM_CANCELMODE` → 3 次 `F10` + `Right×6`（调试菜单）+ `Down` → `GetMenuState(576/581/582)`。三键全为 `0x100` 说明菜单没刷新，重试；`582&3` → `idle`，`581&3` → `paused`，否则 `running`。
 - **保存**：`Ctrl+S` 之后轮询 `#32770` 对话框并 `BM_CLICK` 命中 `确定/OK/是/继续` 的按钮（Proteus 8.17 会弹「File will be saved in version 8.17 format…」）。**不点掉它，文件根本不会落盘，而且它占住前台让后续所有注键失败。**
 - **落盘校验**：保存前后各取一次 `{size, mtimeMs, sha256}`，内容与 mtime 都没变就返回 `SAVE_NOT_APPLIED`，绝不谎报成功。
 - **按键表**（8.17 实测）：`F12` 运行/恢复 · `Pause` 暂停 · `Shift+Pause` 停止 · `Ctrl+F12` 开始仿真 · `Ctrl+S` 保存。菜单导航一律不用字母键（中文 IME 会拦），也不向工具栏发 `TB_*` 消息（越界索引会把 32 位 comctl32 写崩）。
+
+## 0.4.2 修了什么
+
+三个新缺陷，同样在 Proteus 8.17.37159 上实测复现并验证修复，详见 [CHANGELOG.md](./CHANGELOG.md)。
+
+1. **`fail()` 也会产出非法输出** —— 0.4.1 只修了 `suggestLayout`，没意识到 `fail()` 是同一个坑的通用出口：无条件写 `hint`/`details`，code 没有 hint 映射时留下值为 `undefined` 的自有属性，宿主直接拒收整个结果，Agent 连 `code`/`message` 都看不到。改为条件写入，并顺手清掉 `timeSeconds`、`bytes.before/after` 两处同类隐患。
+2. **`proteus_sim_start` 点了没反应** —— Animation 工具栏按钮在 `idle` 时是禁用的。改为 `F12` 优先（工具栏兜底），`simStop` 改走 `Shift+Pause` → 菜单停止 → 工具栏三级回退，每步都用 `probe` 轮询目标态。
+3. **窗口最小化后全部 UI 操作失效** —— 最小化时 `GetWindowRect` 返回 `-32000` 级哨兵值（实测 `-25600`），抢前台拿不到、点击落到屏幕外。`Foreground` 增加 `SW_RESTORE` 前置与 `SwitchToThisWindow` 兜底，新增 `HasUsableRect` 断言，不再静默失败。
 
 ## 0.4.1 修了什么
 
@@ -69,7 +77,7 @@ dsh plugin add dsh-proteus-bridge
 node test/selfcheck.mjs
 ```
 
-18 项：8 个布局用例（含 `refs:['R1']` 这种单件、`columns`/`gridMm` 覆盖、带未匹配前缀的分区）+ PowerShell 补丁存在性 + 保存判据源码断言。不连 Proteus、不需要宿主进程。
+29 项：8 个布局用例（含 `refs:['R1']` 这种单件、`columns`/`gridMm` 覆盖、带未匹配前缀的分区）+ `fail()` 无损性 + 仿真原语顺序 + 最小化恢复 + PowerShell 补丁存在性 + 保存判据源码断言。不连 Proteus、不需要宿主进程。
 
 ## 器件白名单
 

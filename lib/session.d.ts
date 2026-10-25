@@ -77,12 +77,15 @@ export declare class ProteusSession {
         dismissedDialog?: string | null;
         /** UI 传输：磁盘内容是否真的变了（sha256+size）。 */
         contentChanged?: boolean;
-        /** UI 传输：保存前后的字节数。 */
+        /** UI 传输：保存前后的字节数（工程此前未落盘时对应字段为 null）。 */
         bytes?: {
-            before: number;
-            after: number;
+            before: number | null;
+            after: number | null;
         };
     }>>;
+    /** UI 传输：按顺序尝试多个原语，每个原语后轮询 probe 直到到达目标态。 */
+    private uiTransition;
+
     simStart(signal: AbortSignal): Promise<DomainResult<{
         state: SimState;
     }>>;

@@ -2,7 +2,7 @@
   "name": "dsh-proteus-bridge",
   "displayName": "DSH Proteus Bridge",
   "description": "让 Harness Agent 控制 Proteus 8/9 交互仿真并保存工程：仿真生命周期、状态探测、工程保存、布局建议。无 COM 时自动降级到 UI 传输（Win32 键盘驱动）。",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "license": "MIT",
   "author": "hualuo520-h",
   "repository": {

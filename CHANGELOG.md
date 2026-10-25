@@ -1,5 +1,39 @@
 # Changelog
 
+## 0.4.2
+
+三个新缺陷，同样在 **Proteus 8.17.37159 / Windows 11 / DSH desktop profile** 上实测复现并验证修复。
+
+### Fixed
+
+- **`proteus_sim_start` / `proteus_sim_status` 报 `value is not lossless JSON`**
+  0.4.1 只修了 `suggestLayout` 一处，没意识到 `fail()` 是同一个坑的通用出口：它无条件写 `hint: extra?.hint ?? DOMAIN_HINTS[code]` 与 `details: extra?.details`，遇到没有 hint 映射的 code 就留下**值为 `undefined` 的自有属性**，宿主 `snapshotJsonValue` 直接拒收整个结果 —— 本该给 Agent 看的 `code`/`message` 一起丢掉，只剩一句工具层错误。
+  改为条件写入：只有 `hint !== undefined` 才写 `hint`，只有 `extra.details !== undefined` 才写 `details`。
+  同类隐患一并处理：`simStatus` 的 `timeSeconds` 只在 COM 真的返回数值时才带该键；UI 保存结果的 `bytes.before/after` 用 `?? null` 兜住「工程从未落盘」的情况（旧代码会在 `before.size` 处抛 TypeError）。
+  验证：实机 `simStart` / 重复 `simStart`（`SIM_ALREADY_RUNNING`）/ `simStop` / 重复 `simStop` 全部返回零 undefined 属性。
+
+- **`proteus_sim_start` 点工具栏播放键无反应，`sim_stop` 报 `SIM_STOP_FAILED`**
+  UI 传输的仿真生命周期只靠 Animation 工具栏按钮：`simStart` 点 btn0、`simStop` 点 btn1→btn2。实测该工具栏在 `idle` 状态下按钮是**禁用**的，点击毫无反应，于是重试 3 次后返回 `SIM_NOT_CONVERGED`；`simStop` 同理会卡在 `SIM_STOP_FAILED`。
+  改为「多原语 + 状态轮询」：新增 `uiTransition(signal, primitives, want)`，每个原语后轮询 `probe` 最多 3×450 ms，到达目标态即返回。
+  - `simStart`：`F12`（运行/恢复，实测 idle→running、paused→running 均有效）优先，工具栏 btn0 兜底。
+  - `simStop`：`Shift+Pause`（停止）优先，`Design→Stop Animation` 菜单路径次之，工具栏 pause→stop 最后兜底。
+  验证：实机 `idle → simStart → running → simStop → idle`，再 `simStop` 幂等返回 `idle`。
+
+- **Proteus 主窗口被最小化后，所有 UI 操作静默失效或抛 `FOREGROUND_FAILED`**
+  最小化时 `GetWindowRect` 返回 `-32000` 级哨兵值（实测本机为 `left:-25600, top:-25600`），抢前台拿不到、工具栏矩形算出来在屏幕外，点击落到虚空。
+  `Foreground` 增加 `IsIconic → ShowWindow(SW_RESTORE)` 前置，并在 ALT 解锁 + `AttachThreadInput` 之后仍不生效时兜底 `SwitchToThisWindow`；新增 `HasUsableRect` 拒绝 `-30000` 以下的哨兵矩形，`ClickTransportButton` 在取矩形前先断言窗口可用（否则抛 `WINDOW_NOT_RESTORED`，不再静默失败）。
+  验证：外部 `ShowWindow(SW_MINIMIZE)` 把窗口压到 `-25600,-25600` 后，`probe` / `simStart` / `simStatus` / `simStop` / `saveSchematic` 全部照常成功。
+
+### Changed
+
+- `lib/errors.js` 补三个缺失的领域码 hint：`COMPONENT_NOT_FOUND`、`DUPLICATE_COMPONENT_REF`、`INVALID_PIN_REF`（此前查表为 `undefined`，正是缺陷 4 的触发源之一）。
+- `SIM_STOP_FAILED` 的 hint 更新为描述新的三级回退策略。
+- `simStart` 的 `SIM_ALREADY_RUNNING` 判定移到尝试之前：`paused` 不再被当成「已在运行」，`F12` 可正常恢复。
+
+### Added
+
+- `test/selfcheck.mjs` 从 18 项扩到 **29 项**：新增 `fail()` 无损性、`simStart`/`simStop` 原语顺序、`timeSeconds` 条件键、最小化恢复、`HasUsableRect` 五组断言。
+
 ## 0.4.1
 
 三个缺陷全部在 **Proteus 8.17.37159 / Windows 11 / DSH desktop profile** 上实测复现并验证修复。
