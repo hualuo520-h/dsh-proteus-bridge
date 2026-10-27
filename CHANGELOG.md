@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.4.3
+
+一个安装探测缺陷 + 市场展示元数据。缺陷在 **Proteus 8.17.37159 / Windows 11 / DSH desktop profile** 上实测复现并验证修复。
+
+### Fixed
+
+- **Proteus 装在 C:/D: 以外盘符时，`proteus_connect` 报 `PROTEUS_NOT_INSTALLED`（并把真正的失败掩盖成 PowerShell 参数绑定异常）**
+  旧实现 `PDS_CANDIDATES` 只硬编码 `C:\` 与 `D:\` 四个路径。本机 Proteus 装在 `E:\Program Files (x86)\Labcenter Electronics\Proteus 8 Professional\BIN\PDS.EXE`，于是候选全落空 → `findProteusExe()` 返回 `null` → `probeExeVersion('')` 把空字符串甩给 PowerShell，`Get-Item -LiteralPath ''` 抛 `ParameterArgumentValidationErrorEmptyStringNotAllowed`，用户看到的是一句 PowerShell 报错，而不是「没找到 PDS.EXE」。
+  改为三段探测：App Paths → 卸载项 `InstallLocation`（Proteus 安装器会写真实安装根）→ `A:`–`Z:` × 常见尾段。命中前先 `stat` 校验路径真实存在（注册表可能指向已卸载的旧路径）。`probeExeVersion` 在空路径时直接抛 `PROTEUS_NOT_INSTALLED`，PowerShell 失败则抛新增的 `PROTEUS_VERSION_PROBE_FAILED`，不再把探测失败伪装成别的错误。
+  验证：本机 `proteus_connect` 由 PowerShell 报错变为 `ok:true, transport:"ui", major:8, build:"8.17.37159"`。
+
+### Added
+
+- `screenshots.json` + `assets/`（市场详情页截图），`icon.png` 供目录条目的 `icon:` 字段使用。
+- `lib/errors.d.ts` 新增 `PROTEUS_VERSION_PROBE_FAILED` 基础设施码。
+
 ## 0.4.2
 
 三个新缺陷，同样在 **Proteus 8.17.37159 / Windows 11 / DSH desktop profile** 上实测复现并验证修复。

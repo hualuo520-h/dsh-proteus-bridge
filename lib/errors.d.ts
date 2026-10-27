@@ -19,7 +19,7 @@ export declare function fail(code: DomainCode, message: string, extra?: {
     details?: unknown;
 }): DomainResult<never>;
 /** 基础设施代码：环境损坏/进程死亡等，Agent 无法通过换调用方式纠正。 */
-export type InfraCode = 'PROTEUS_NOT_INSTALLED' | 'BROKER_CRASHED' | 'BROKER_TIMEOUT' | 'COM_CALL_FAILED' | 'WHITELIST_UNREADABLE';
+export type InfraCode = 'PROTEUS_NOT_INSTALLED' | 'PROTEUS_VERSION_PROBE_FAILED' | 'BROKER_CRASHED' | 'BROKER_TIMEOUT' | 'COM_CALL_FAILED' | 'WHITELIST_UNREADABLE';
 export declare function infra(code: InfraCode, message: string): never;
 /**
  * 守卫层抛出的领域拒绝。版本适配层接口签名是 void（用户给定），

@@ -1,6 +1,12 @@
 # dsh-proteus-bridge
 
+![dsh-proteus-bridge](assets/icon.png)
+
 DeepSeek Harness（Cordis）工具插件：让 Agent 控制 **Proteus 8 / 9** 的交互仿真并保存工程。
+
+![Proteus 8.17 交互仿真运行中：Bulb Blinker 原理图与探针读数](assets/screenshot-1-proteus-simulation.png)
+
+*上图：Proteus 8.17 里一个真实的 `Bulb Blinker` 工程正在交互仿真，电压/电流探针实时读数。插件负责的是「Agent 侧」——连接、启停、状态、保存；原理图本身是人工画的。*
 
 插件对外只暴露一套工具，内部按本机能力自动选择传输层：
 
@@ -54,6 +60,10 @@ dsh plugin add dsh-proteus-bridge
 - **保存**：`Ctrl+S` 之后轮询 `#32770` 对话框并 `BM_CLICK` 命中 `确定/OK/是/继续` 的按钮（Proteus 8.17 会弹「File will be saved in version 8.17 format…」）。**不点掉它，文件根本不会落盘，而且它占住前台让后续所有注键失败。**
 - **落盘校验**：保存前后各取一次 `{size, mtimeMs, sha256}`，内容与 mtime 都没变就返回 `SAVE_NOT_APPLIED`，绝不谎报成功。
 - **按键表**（8.17 实测）：`F12` 运行/恢复 · `Pause` 暂停 · `Shift+Pause` 停止 · `Ctrl+F12` 开始仿真 · `Ctrl+S` 保存。菜单导航一律不用字母键（中文 IME 会拦），也不向工具栏发 `TB_*` 消息（越界索引会把 32 位 comctl32 写崩）。
+
+## 0.4.3 修了什么
+
+1. **Proteus 装在 C:/D: 以外盘符时连不上** —— 旧实现只硬编码 `C:\`/`D:\` 四个 `PDS.EXE` 候选。本机装在 `E:\Program Files (x86)\...`，候选全落空 → `findProteusExe()` 返回 `null` → 空路径被甩给 PowerShell，`Get-Item -LiteralPath ''` 的参数绑定异常顶替了真正的原因，用户看到一句 PowerShell 报错而不是「没找到 PDS.EXE」。改为 App Paths → 卸载项 `InstallLocation` → `A:`–`Z:` × 常见尾段三段探测，命中前先 `stat` 校验；空路径直接抛 `PROTEUS_NOT_INSTALLED`，PowerShell 失败抛新增的 `PROTEUS_VERSION_PROBE_FAILED`。
 
 ## 0.4.2 修了什么
 
